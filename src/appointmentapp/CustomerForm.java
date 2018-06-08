@@ -5,7 +5,6 @@
  */
 package appointmentapp;
 
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javafx.event.ActionEvent;
 import javafx.geometry.Pos;

@@ -34,7 +34,8 @@ public class DatabaseQueryBank {
 	private final String DELETE_ADDRESS = "runDeleteAddress";
 	private final String UPDATE_ADDRESS = "runUpdateAddress";
 	
-	private final String GET_APPOINTMENTS = "runGetAppointments";
+	private final String GET_ALL_APPOINTMENTS = "runGetAllAppointments";
+	private final String GET_APPOINTMENTS_BY_USER = "runGetAppointmentsByUser";
 	private final String GET_APPOINTMENT = "runGetAppointment";
 	private final String INSERT_APPOINTMENT = "runInsertAppointment";
 	private final String DELETE_APPOINTMENT = "runDeleteAppointment";
@@ -66,14 +67,6 @@ public class DatabaseQueryBank {
 	private final String DELETE_REMINDER = "runDeleteReminder";
 	private final String UPDATE_REMINDER = "runUpdateReminder";
 
-	private Date sqlDateToJavaDate(java.sql.Date sqlDate) {
-		Date javaDate = null;
-		if (sqlDate != null) {
-		    javaDate = new Date(sqlDate.getTime());
-		}
-		return javaDate;
-    	}
-
 	public Object getAddress(Object queryObj) {
 		return executeQuery(getQueryMethod(GET_ADDRESS), queryObj);
 	}
@@ -90,8 +83,12 @@ public class DatabaseQueryBank {
 		executeQuery(getQueryMethod(UPDATE_ADDRESS), queryObj);
 	}
 
-	public Object getAppointments(Object queryObj) {
-		return executeQuery(getQueryMethod(GET_APPOINTMENTS), queryObj);
+	public Object getAppointmentsByUser(Object queryObj) {
+		return executeQuery(getQueryMethod(GET_APPOINTMENTS_BY_USER), queryObj);
+	}
+
+	public Object getAllAppointments() {
+		return executeQuery(getQueryMethod(GET_ALL_APPOINTMENTS), null);
 	}
 
 	public Object getAppointment(Object queryObj) {
@@ -571,11 +568,41 @@ public class DatabaseQueryBank {
 		}
 	}
 
-	private Object runGetAppointments(Connection conn, Object queryObj) {
+	private Object runGetAllAppointments(Connection conn, Object queryObj) {
 		String queryString = "SELECT * FROM appointment";
 		ArrayList<Appointment> appointments = new ArrayList<>();	
 		try {
 			PreparedStatement statement = conn.prepareStatement(queryString);
+			ResultSet cursor = statement.executeQuery();
+			while(cursor.next()) {
+				Appointment appointment = new Appointment(
+					cursor.getInt("appointmentId"), 
+					cursor.getInt("customerId"),
+					cursor.getString("createdBy"),
+					cursor.getString("title"),
+					cursor.getString("description"),
+					cursor.getString("contact"),
+					cursor.getString("location"),
+					cursor.getString("url"),
+					new Date(cursor.getTimestamp("start").getTime()),
+					new Date(cursor.getTimestamp("end").getTime()));
+				appointments.add(appointment);
+			}
+			return appointments;
+		} catch (SQLException e) {
+			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
+			  return appointments;
+		}
+
+	} 
+
+	private Object runGetAppointmentsByUser(Connection conn, Object queryObj) {
+		String queryString = "SELECT * FROM appointment WHERE createdBy = ?";
+		User user = (User) queryObj;
+		ArrayList<Appointment> appointments = new ArrayList<>();	
+		try {
+			PreparedStatement statement = conn.prepareStatement(queryString);
+			statement.setString(1, user.getUserName());
 			ResultSet cursor = statement.executeQuery();
 			while(cursor.next()) {
 				Appointment appointment = new Appointment(

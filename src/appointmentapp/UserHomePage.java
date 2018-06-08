@@ -5,10 +5,10 @@
  */
 package appointmentapp;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.geometry.Insets;
@@ -22,9 +22,11 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TablePosition;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -36,6 +38,7 @@ import javafx.stage.Popup;
  */
 public class UserHomePage {
 	User user;
+	TextArea reportDisplay;
 	ObservableList<Customer> customers;
 	ObservableList<Appointment> appointments;
 	ObservableList<Appointment> appointmentsWithinCurrentMonth;
@@ -57,7 +60,7 @@ public class UserHomePage {
 		ArrayList<Customer> userCustomers = (ArrayList<Customer>) queryBank.getCustomers(user);
 		if(userCustomers == null) userCustomers = new ArrayList<Customer>();
 		this.customers = FXCollections.observableArrayList(userCustomers);
-		ArrayList<Appointment> userAppointments = (ArrayList<Appointment>) queryBank.getAppointments(user);
+		ArrayList<Appointment> userAppointments = (ArrayList<Appointment>) queryBank.getAppointmentsByUser(user);
 		if(userAppointments == null) userAppointments = new ArrayList<Appointment>();
 		this.appointments = FXCollections.observableArrayList(userAppointments);
 		this.grid = new GridPane();
@@ -159,7 +162,7 @@ public class UserHomePage {
 					//need to also delete reminderrs associated with this appointment (also increment types?)
 					popup.hide();
 					this.appointments.removeAll();
-					ArrayList<Appointment> updatedApptList = (ArrayList<Appointment>) queryBank.getAppointments(this.user);
+					ArrayList<Appointment> updatedApptList = (ArrayList<Appointment>) queryBank.getAppointmentsByUser(this.user);
 					this.appointments = FXCollections.observableArrayList(updatedApptList);
 					this.appointmentTable.setItems(this.appointments);
 					
@@ -187,6 +190,69 @@ public class UserHomePage {
 		this.grid.add(this.appointmentTable, 1, 1);
 
 	}
+
+	private void configureReportDisplay() {
+		TextArea reportOutput = new TextArea();	
+		this.reportDisplay = reportOutput;
+		reportOutput.setPrefHeight(600);
+		reportOutput.setPrefWidth(450);
+		reportOutput.setEditable(false);
+		this.grid.add(reportOutput, 2, 1);
+	}
+
+	private String generateConsultantReport () {
+		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
+		HashMap<String, ArrayList<Appointment>> scheduleMap = new HashMap<>();
+		appointments.forEach(appointment -> {
+			String userName = appointment.getCreatedBy();
+			if(scheduleMap.get(userName) == null) {
+				ArrayList<Appointment> userAppointmentList = new ArrayList<Appointment>();
+				userAppointmentList.add(appointment);
+				scheduleMap.put(userName, userAppointmentList);
+			} else {
+				scheduleMap.get(userName).add(appointment);
+			}
+		});
+		StringBuilder report = new StringBuilder();
+		report.append("Consultant Schedule\n");
+		
+		for(Map.Entry<String, ArrayList<Appointment>> pair : scheduleMap.entrySet()) {
+			String userName = pair.getKey();
+			ArrayList<Appointment> apptList = pair.getValue();
+			report.append("\n" + userName + ": \n");
+			apptList.forEach(appt -> {
+				System.out.println(appt.getTitle());
+				report.append("\t" + appt.getTitle() + ": ");
+				report.append(appt.getStart().toString() + " -> ");
+				report.append(appt.getEnd().toString());
+				report.append("\n");
+			});
+			report.append("\n");
+		}
+		return report.toString();
+	}
+
+	private void configureReportGenerationBtns() {
+		VBox reportGenerationBtnContainer = new VBox();
+		Button consultantScheduleBtn = new Button("Generate Consultant Schedule Report");
+		consultantScheduleBtn.setOnAction((ActionEvent e) -> {
+			this.reportDisplay.setText(this.generateConsultantReport());
+		});
+		Button appointmentTypesBtn = new Button("Generate Appointment Types Report");
+		appointmentTypesBtn.setOnAction((ActionEvent e) -> {
+			this.reportDisplay.setText("");
+		});
+		Button generateCompanyTotalsBtn = new Button("Generate Company Totals Report");
+		generateCompanyTotalsBtn.setOnAction((ActionEvent e) -> {
+			this.reportDisplay.setText("");	
+		});
+		reportGenerationBtnContainer.setAlignment(Pos.BOTTOM_RIGHT);
+		reportGenerationBtnContainer.getChildren().add(consultantScheduleBtn);
+		reportGenerationBtnContainer.getChildren().add(appointmentTypesBtn);
+		reportGenerationBtnContainer.getChildren().add(generateCompanyTotalsBtn);
+		this.grid.add(reportGenerationBtnContainer, 2, 2);
+	}
+		
 
 	private void configureHeadline() {
 		this.sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
@@ -283,6 +349,8 @@ public class UserHomePage {
 		this.configureAppointmentCalendar();
 		this.configureCalendarFilterBtns();
 		this.configureAddAppointmentBtn();
+		this.configureReportDisplay();
+		this.configureReportGenerationBtns();
 
 		this.primaryStage.setScene(this.scene);
 		this.primaryStage.show();

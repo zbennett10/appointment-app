@@ -80,7 +80,7 @@ public class AppointmentPage {
 		this.grid = new GridPane();
 		this.scene = new Scene(this.grid, 800, 600);
 		this.sceneTitle = new Text(appointment == null ? "Add Appointment" : "Appointment: " + appointment.getTitle());
-		this.allAppointments = (ArrayList<Appointment>) queryBank.getAppointments(user);
+		this.allAppointments = (ArrayList<Appointment>) queryBank.getAppointmentsByUser(user);
 		if(appointment == null) {
 			this.configureAddAppointmentBtn();
 			ArrayList<Customer> userCustomers = (ArrayList<Customer>) queryBank.getCustomers(user);
