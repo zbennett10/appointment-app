@@ -5,10 +5,15 @@
  */
 package appointmentapp;
 
+import java.text.DateFormatSymbols;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.geometry.Insets;
@@ -17,6 +22,8 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Pos;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
@@ -57,7 +64,7 @@ public class UserHomePage {
 		this.primaryStage = primaryStage;	
 		this.user = user;
 		this.queryBank = queryBank;
-		ArrayList<Customer> userCustomers = (ArrayList<Customer>) queryBank.getCustomers(user);
+		ArrayList<Customer> userCustomers = (ArrayList<Customer>) queryBank.getCustomersByUsername(user);
 		if(userCustomers == null) userCustomers = new ArrayList<Customer>();
 		this.customers = FXCollections.observableArrayList(userCustomers);
 		ArrayList<Appointment> userAppointments = (ArrayList<Appointment>) queryBank.getAppointmentsByUser(user);
@@ -200,8 +207,7 @@ public class UserHomePage {
 		this.grid.add(reportOutput, 2, 1);
 	}
 
-	private String generateConsultantReport () {
-		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
+	private HashMap<String, ArrayList<Appointment>> getAppointmentsByUsername(ArrayList<Appointment> appointments) {
 		HashMap<String, ArrayList<Appointment>> scheduleMap = new HashMap<>();
 		appointments.forEach(appointment -> {
 			String userName = appointment.getCreatedBy();
@@ -213,9 +219,44 @@ public class UserHomePage {
 				scheduleMap.get(userName).add(appointment);
 			}
 		});
+		return scheduleMap;
+	}
+
+	private String getMonthYearKey(Date appointmentStart) {
+		int month = appointmentStart.getMonth();
+		int year  = appointmentStart.getYear();
+		return Integer.toString(month) + "_" + Integer.toString(year);
+	}
+
+	private String getMonthYearDesignation(String key) {
+		String[] tokens = key.split("\\_");
+		String month = new DateFormatSymbols().getMonths()[Integer.parseInt(tokens[0])];
+		return month + " - " + tokens[1].substring(1);
+	}
+
+	private HashMap<String, ArrayList<Appointment>> getAppointmentsByMonth(ArrayList<Appointment> appointments) {
+		HashMap<String, ArrayList<Appointment>> appointmentsByMonth = new HashMap<>();
+		appointments.forEach(appointment -> {
+			String key = this.getMonthYearKey(appointment.getStart());
+
+			if(appointmentsByMonth.get(key) == null) {
+				ArrayList<Appointment> newApptList = new ArrayList<Appointment>();
+				newApptList.add(appointment);
+				appointmentsByMonth.put(key, newApptList);
+			} else {
+				appointmentsByMonth.get(key).add(appointment);
+			}
+		});
+		return appointmentsByMonth;
+			
+	}
+
+	private String generateConsultantReport () {
+		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
+		HashMap<String, ArrayList<Appointment>> scheduleMap = this.getAppointmentsByUsername(appointments);
 		StringBuilder report = new StringBuilder();
 		report.append("Consultant Schedule\n");
-		
+
 		for(Map.Entry<String, ArrayList<Appointment>> pair : scheduleMap.entrySet()) {
 			String userName = pair.getKey();
 			ArrayList<Appointment> apptList = pair.getValue();
@@ -232,6 +273,47 @@ public class UserHomePage {
 		return report.toString();
 	}
 
+	private String generateAppointmentTypesReport() {
+		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
+		HashMap<String, ArrayList<Appointment>> appointmentsByMonth = this.getAppointmentsByMonth(appointments);
+		StringBuilder report = new StringBuilder();
+		report.append("Unique Appointment Types By Month\n");
+
+		for(Map.Entry<String, ArrayList<Appointment>> pair : appointmentsByMonth.entrySet()) {
+			String key = pair.getKey();
+			String monthYearDesignation = this.getMonthYearDesignation(key);
+			ArrayList<Appointment> apptList = pair.getValue();
+			ArrayList<String> apptTypes = new ArrayList();
+			for(Appointment appt : apptList) {
+				apptTypes.add(appt.getTitle());
+			}
+			Set<String> uniqueApptTypes = new HashSet<String>(apptTypes);
+			int apptTypeCount = uniqueApptTypes.size();
+			report.append("\n" + monthYearDesignation + ": \n");
+			report.append("\t Total Appointment Types: " + Integer.toString(apptTypeCount) + "\n");
+			uniqueApptTypes.forEach(type -> {
+				report.append("\t" + type);
+				report.append("\n");
+			});
+			report.append("\n");
+		}
+		return report.toString();
+
+	}
+
+	private String generateCompanyTotalsReport() {
+		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
+		ArrayList<User> consultants = (ArrayList<User>) this.queryBank.getAllUsers(null);
+		ArrayList<Customer> customers = (ArrayList<Customer>) this.queryBank.getCustomers(null);
+
+		StringBuilder report = new StringBuilder();
+		report.append("Company Totals: \n");
+		report.append("\n Total Consultants: " + Integer.toString(consultants.size()) + "\n");
+		report.append("\n Total Customers: " + Integer.toString(customers.size()) + "\n");
+		report.append("\n Total Appointments: " + Integer.toString(appointments.size()) + "\n");
+		return report.toString();
+	}
+
 	private void configureReportGenerationBtns() {
 		VBox reportGenerationBtnContainer = new VBox();
 		Button consultantScheduleBtn = new Button("Generate Consultant Schedule Report");
@@ -240,11 +322,11 @@ public class UserHomePage {
 		});
 		Button appointmentTypesBtn = new Button("Generate Appointment Types Report");
 		appointmentTypesBtn.setOnAction((ActionEvent e) -> {
-			this.reportDisplay.setText("");
+			this.reportDisplay.setText(this.generateAppointmentTypesReport());
 		});
 		Button generateCompanyTotalsBtn = new Button("Generate Company Totals Report");
 		generateCompanyTotalsBtn.setOnAction((ActionEvent e) -> {
-			this.reportDisplay.setText("");	
+			this.reportDisplay.setText(this.generateCompanyTotalsReport());	
 		});
 		reportGenerationBtnContainer.setAlignment(Pos.BOTTOM_RIGHT);
 		reportGenerationBtnContainer.getChildren().add(consultantScheduleBtn);
@@ -341,7 +423,32 @@ public class UserHomePage {
 		appointmentPage.render();
 	}
 
-	public void render() {
+	private void alertUserOfUpcomingAppointments() {
+		//get current time
+		long currentTimestamp = Calendar.getInstance().getTime().getTime();
+
+		//iterate over appointments -> if appointment start is 15 minutes or less past current time show alert for that appointment
+		for(Appointment appt : this.appointments) {
+			long apptTimestamp = appt.getStart().getTime();
+			if (Math.abs(apptTimestamp - currentTimestamp) <= TimeUnit.MINUTES.toMillis(15)) {
+    				this.showAppointmentReminderAlert(appt);
+			}
+		}
+
+	}
+
+	private void showAppointmentReminderAlert(Appointment appointment)  {
+		StringBuilder reminder = new StringBuilder();
+		reminder.append("Upcoming Appointment: \n\n");
+		reminder.append("Title/Type: " + appointment.getTitle() + "\n");
+		reminder.append("Description: " + appointment.getDescription() + "\n");
+		reminder.append("Start: " + appointment.getStart().toString() + "\n");
+		reminder.append("End: " + appointment.getEnd().toString() + "\n");
+		Alert alert = new Alert(AlertType.INFORMATION, reminder.toString());
+		alert.show();
+	}
+
+	public void render(boolean userJustLoggedIn) {
 		this.configureGrid();
 		this.configureHeadline();
 		this.configureCustomerTable();
@@ -354,6 +461,9 @@ public class UserHomePage {
 
 		this.primaryStage.setScene(this.scene);
 		this.primaryStage.show();
+		if(userJustLoggedIn) {
+			this.alertUserOfUpcomingAppointments();
+		}
 	}
 			
 }

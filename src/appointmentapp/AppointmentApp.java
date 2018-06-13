@@ -6,7 +6,9 @@
 package appointmentapp;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,8 +41,8 @@ import javafx.scene.paint.Color;
 public class AppointmentApp extends Application {
 	private Logger loginLogger;
 	private DatabaseQueryBank queryBank = null;
-	private final LocaleService locationService = LocaleService.getInstance();
-	private Locale appLocale = locationService.getLocale();
+	private LocaleService locationService;
+	private Locale appLocale;
 	private String currentAlertKey = null;
 
 	private Label usernameLabel;
@@ -60,7 +62,13 @@ public class AppointmentApp extends Application {
     
    @Override
     public void start(Stage primaryStage) {
-	    initiateLogger();
+	// In order to test language setting based on locale, uncomment the line below 
+	// Locale.setDefault(new Locale("fr", "FR")); 
+	 Locale.setDefault(new Locale("fr", "FR")); 
+
+	locationService = LocaleService.getInstance();
+	appLocale = locationService.getLocale();
+	initiateLogger();
 	this.queryBank = new DatabaseQueryBank(); 
 	renderLoginForm(primaryStage);
     }
@@ -101,37 +109,6 @@ public class AppointmentApp extends Application {
 	PasswordField passwordInput = new PasswordField();
 	grid.add(passwordInput, 1, 2);
 
-
-    	ToggleGroup  langGroup = new ToggleGroup();
-    	RadioButton unitedStatesBtn = new RadioButton("US");
-    	unitedStatesBtn.setToggleGroup(langGroup);
-	unitedStatesBtn.setUserData("en-US");
-
-    	RadioButton franceBtn = new RadioButton("FR");
-    	franceBtn.setToggleGroup(langGroup);
-	franceBtn.setUserData("fr-FR");
-
-	HBox langGroupContainer = new HBox(10);
-	langGroupContainer.setAlignment(Pos.TOP_RIGHT);
-	langGroupContainer.getChildren().add(unitedStatesBtn);
-	langGroupContainer.getChildren().add(franceBtn);
-	grid.add(langGroupContainer, 1, 6);
-	
-	if (appLocale.getCountry().equals("FR")) {
-		franceBtn.setSelected(true);
-	} else {
-		unitedStatesBtn.setSelected(true);
-	}
-
-	langGroup.selectedToggleProperty().addListener((ObservableValue<? extends Toggle> _ov, Toggle _oldToggle, Toggle _newToggle) -> {
-		if (langGroup.getSelectedToggle() != null) {
-			String newLocationTag = langGroup.getSelectedToggle().getUserData().toString();
-			locationService.setLocale(newLocationTag.substring(0, 2), newLocationTag.substring(3, 5));
-			appLocale = locationService.getLocale();
-			setLoginFormLabels();
-		} 
-	});
-
 	alertLabel = new Label("");
 	alertLabel.setTextFill(Color.web("#ff0000"));
 	HBox alertContainer = new HBox(10);
@@ -157,7 +134,7 @@ public class AppointmentApp extends Application {
 					//handle successful login
 					this.loginLogger.log(Level.INFO, "{0} logged in.", userName);
 					UserHomePage homePage = new UserHomePage(primaryStage, user, queryBank);
-					homePage.render();
+					homePage.render(true);
 				}
 			} else {
 				throw new InvalidLoginException(locationService.getEmptyUsernameOrPasswordMessage());
@@ -297,7 +274,7 @@ public class AppointmentApp extends Application {
 					newUser.setUserId(userId);
 					this.loginLogger.info(userName + " logged in.");
 					UserHomePage homePage = new UserHomePage(primaryStage, newUser, queryBank);
-					homePage.render();
+					homePage.render(true);
 				} else {
 					throw new InvalidLoginException(locationService.getExistingUserMessage());
 				}

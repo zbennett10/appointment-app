@@ -21,13 +21,7 @@ public class LocaleService {
 	private ResourceBundle loginFormBundle;
 
 	private LocaleService() {
-		Properties systemProperties = System.getProperties();
-		String userLanguage = systemProperties.getProperty("user.language");
-		String userCountry = systemProperties.getProperty("user.country");
-
-		this.appLocale = new Locale(userLanguage, userCountry);
-		this.country = userCountry;
-		this.language = userLanguage;
+		this.appLocale = Locale.getDefault();
 		this.loginFormBundle = ResourceBundle.getBundle("appointmentapp.LoginAndRegister", this.appLocale);
 	}
 

@@ -5,11 +5,18 @@
  */
 package appointmentapp;
 
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
@@ -193,7 +200,7 @@ public class AppointmentPage {
 			this.queryBank.insertAppointment(newAppointment);
 			
 			UserHomePage homePage = new UserHomePage(primaryStage, user, queryBank);
-			homePage.render();
+			homePage.render(false);
 							
 		});
 
@@ -279,7 +286,7 @@ public class AppointmentPage {
 			);
 			this.queryBank.updateAppointment(newAppointment);
 			UserHomePage homePage = new UserHomePage(primaryStage, user, queryBank);
-			homePage.render();
+			homePage.render(false);
 		});
 
 		HBox updateBtnContainer = new HBox(10);
@@ -291,13 +298,29 @@ public class AppointmentPage {
 	}
 
 	private void setInitialFormValues() {
-		SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm");
+		try {
+
+		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
+
 		Date startDate = this.appointment.getStart();
 		Date endDate = this.appointment.getEnd();
-		LocalDate startLocalDate = startDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-		LocalTime startLocalTime = LocalTime.parse(dateFormatter.format(startDate));
+		DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+		// convert the timestamp to a zoneddatetime
+		ZonedDateTime z2 = startDate.toInstant().atZone(ZoneId.systemDefault());
+		int timezoneOffset  = z2.getOffset().getTotalSeconds() / 3600;
+
+		ZonedDateTime baseStart = startDate.toInstant().atZone(ZoneId.of("UTC"));
+		ZonedDateTime localStart = baseStart.withZoneSameInstant(ZoneId.systemDefault());
+		ZonedDateTime baseEnd = endDate.toInstant().atZone(ZoneId.of("UTC"));
+		ZonedDateTime localEnd = baseEnd.withZoneSameInstant(ZoneId.systemDefault());
+
+		LocalDate startLocalDate = baseStart.withZoneSameInstant((ZoneId.systemDefault())).toLocalDate();
+		LocalTime startLocalTime = LocalTime.parse(dateFormatter.format(localStart));
+		startLocalTime = LocalTime.of(startLocalTime.getHour() + timezoneOffset, startLocalTime.getMinute()); 
+
 		LocalDate endLocalDate = endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-		LocalTime endLocalTime = LocalTime.parse(dateFormatter.format(endDate));
+		LocalTime endLocalTime = LocalTime.parse(dateFormatter.format(localEnd));
+		endLocalTime = LocalTime.of(endLocalTime.getHour() + timezoneOffset, endLocalTime.getMinute()); 
 
 		this.appointmentTitleInput.setText(this.appointment.getTitle());
 		this.appointmentDescriptionInput.setText(this.appointment.getDescription());
@@ -307,6 +330,9 @@ public class AppointmentPage {
 		this.startTimeSpinner.getValueFactory().setValue(startLocalTime);
 		this.appointmentEndInput.setValue(endLocalDate);
 		this.endTimeSpinner.getValueFactory().setValue(endLocalTime);
+		} catch (Exception e) {
+
+		}
 	}
 
 	public void renderCustomerView(Customer customer) {

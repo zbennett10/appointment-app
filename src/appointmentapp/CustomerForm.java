@@ -202,7 +202,7 @@ public class CustomerForm {
 			this.customer.setCustomerName(newCustomerName);
 			this.queryBank.updateCustomer(this.customer);
 			UserHomePage homePage = new UserHomePage(primaryStage, user, queryBank);
-			homePage.render();
+			homePage.render(false);
 							
 		});
 		HBox updateBtnContainer = new HBox(10);
@@ -262,7 +262,7 @@ public class CustomerForm {
 			Customer newCustomer = new Customer(customerName, addressId, 1, userName);
 			this.queryBank.insertCustomer(newCustomer);
 			UserHomePage homePage = new UserHomePage(primaryStage, user, queryBank);
-			homePage.render();
+			homePage.render(false);
 							
 		});
 		HBox addBtnContainer = new HBox(10);

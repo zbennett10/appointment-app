@@ -5,6 +5,7 @@
  */
 package appointmentapp;
 
+import java.time.format.FormatStyle;
 import com.mysql.jdbc.Statement;
 import java.lang.reflect.Method;
 import java.sql.Connection;
@@ -14,7 +15,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 /**
@@ -23,7 +33,8 @@ import java.util.logging.Logger;
  */
 public class DatabaseQueryBank {
 	private final String DATABASE_URL = "jdbc:mysql://52.206.157.109/U04tYO?";
-
+	
+	private final String GET_ALL_USERS = "runGetAllUsers";
 	private final String GET_USER = "runGetUser";
 	private final String INSERT_USER = "runInsertUser";
 	private final String DELETE_USER = "runDeleteUser";
@@ -51,6 +62,7 @@ public class DatabaseQueryBank {
 	private final String DELETE_COUNTRY = "runDeleteCountry";
 	private final String UPDATE_COUNTRY = "runUpdateCountry";
 	
+	private final String GET_CUSTOMERS_BY_USERNAME = "runGetCustomersByUsername";	
 	private final String GET_CUSTOMERS = "runGetCustomers";
 	private final String GET_CUSTOMER = "runGetCustomer";
 	private final String INSERT_CUSTOMER = "runInsertCustomer";
@@ -139,6 +151,10 @@ public class DatabaseQueryBank {
 		executeQuery(getQueryMethod(UPDATE_COUNTRY), queryObj);
 	}
 
+	public Object getCustomersByUsername(Object queryObj) {
+		return executeQuery(getQueryMethod(GET_CUSTOMERS_BY_USERNAME), queryObj);
+	}
+
 	public Object getCustomers(Object queryObj) {
 		return executeQuery(getQueryMethod(GET_CUSTOMERS), queryObj);
 	}
@@ -189,6 +205,10 @@ public class DatabaseQueryBank {
 
 	public void updateReminder(Object queryObj) {
 		executeQuery(getQueryMethod(UPDATE_REMINDER), queryObj);
+	}
+
+	public Object getAllUsers(Object queryObj) {
+		return executeQuery(getQueryMethod(GET_ALL_USERS), null);	
 	}
 
 	public Object getUser(Object queryObj) {
@@ -326,6 +346,7 @@ public class DatabaseQueryBank {
 			PreparedStatement statement = conn.prepareStatement(queryString);
 			statement.setInt(1, appointmentId);
 			ResultSet cursor = statement.executeQuery();
+
 			while(cursor.next()) {
 				appointment = new Appointment(
 					cursor.getInt("appointmentId"), 
@@ -351,11 +372,6 @@ public class DatabaseQueryBank {
 		Appointment appointment = (Appointment) queryObj;
 		String queryString = "UPDATE appointment SET title = ?, description = ?, location = ?, contact = ?, url = ?, start = ?, end =?,"
 			+ " lastUpdate = ?, lastUpdateBy = ? WHERE appointmentId = ?";
-		System.out.println(appointment.getStart().toString());
-		System.out.println(appointment.getEnd().toString());
-		System.out.println("break");
-		System.out.println(new Timestamp(appointment.getStart().getTime()).toString());
-		System.out.println(new Timestamp(appointment.getEnd().getTime()).toString());
 		try {
 			PreparedStatement statement = conn.prepareStatement(queryString);
 			Long timestamp = System.currentTimeMillis();
@@ -378,6 +394,13 @@ public class DatabaseQueryBank {
 	private void runInsertAppointment(Connection conn,  Object queryObj){
 		Appointment appointment = (Appointment) queryObj;
 		String queryString = "INSERT INTO appointment (customerId, title, description, location, contact, url, start, end, createdBy, createDate, lastUpdate, lastUpdateBy)" + " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+		 ZonedDateTime startUTC = appointment.getStart().toInstant().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"));
+		ZonedDateTime endUTC = appointment.getEnd().toInstant().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"));            
+		
+		Timestamp startTimestamp = Timestamp.valueOf(startUTC.toLocalDateTime()); //this value can be inserted into database
+		Timestamp endTimestamp = Timestamp.valueOf(endUTC.toLocalDateTime()); //this value can be inserted into database 
+
 		try {
 			PreparedStatement statement = conn.prepareStatement(queryString);
 			Long timestamp = System.currentTimeMillis();
@@ -387,8 +410,8 @@ public class DatabaseQueryBank {
 			statement.setString(4, appointment.getLocation());
 			statement.setString(5, appointment.getContact());
 			statement.setString(6, appointment.getUrl());
-			statement.setTimestamp(7, new Timestamp(appointment.getStart().getTime()));
-			statement.setTimestamp(8, new Timestamp(appointment.getEnd().getTime()));
+			statement.setTimestamp(7, startTimestamp);
+			statement.setTimestamp(8, endTimestamp);
 			statement.setString(9, appointment.getCreatedBy());
 			statement.setTimestamp(10, new Timestamp(timestamp));
 			statement.setTimestamp(11, new Timestamp(timestamp));
@@ -575,6 +598,16 @@ public class DatabaseQueryBank {
 			PreparedStatement statement = conn.prepareStatement(queryString);
 			ResultSet cursor = statement.executeQuery();
 			while(cursor.next()) {
+				DateTimeFormatter dateFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
+
+				Timestamp start = cursor.getTimestamp("start");
+				ZonedDateTime baseStart = start.toLocalDateTime().atZone(ZoneId.of("UTC"));
+				ZonedDateTime localStart = baseStart.withZoneSameInstant(ZoneId.systemDefault());
+
+				Timestamp end = cursor.getTimestamp("end");
+				ZonedDateTime baseEnd = end.toLocalDateTime().atZone(ZoneId.of("UTC"));
+				ZonedDateTime localEnd = baseEnd.withZoneSameInstant(ZoneId.systemDefault());
+
 				Appointment appointment = new Appointment(
 					cursor.getInt("appointmentId"), 
 					cursor.getInt("customerId"),
@@ -586,6 +619,7 @@ public class DatabaseQueryBank {
 					cursor.getString("url"),
 					new Date(cursor.getTimestamp("start").getTime()),
 					new Date(cursor.getTimestamp("end").getTime()));
+
 				appointments.add(appointment);
 			}
 			return appointments;
@@ -604,6 +638,7 @@ public class DatabaseQueryBank {
 			PreparedStatement statement = conn.prepareStatement(queryString);
 			statement.setString(1, user.getUserName());
 			ResultSet cursor = statement.executeQuery();
+
 			while(cursor.next()) {
 				Appointment appointment = new Appointment(
 					cursor.getInt("appointmentId"), 
@@ -616,13 +651,40 @@ public class DatabaseQueryBank {
 					cursor.getString("url"),
 					new Date(cursor.getTimestamp("start").getTime()),
 					new Date(cursor.getTimestamp("end").getTime()));
+
 				appointments.add(appointment);
 			}
 			return appointments;
-		} catch (SQLException e) {
+		} catch (Exception e) {
 			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
 			  return appointments;
 		}
+
+	}
+
+	private Object runGetCustomersByUsername(Connection conn, Object queryObj) {
+		String queryString = "SELECT * FROM customer WHERE createdBy = ?";
+		User user = (User) queryObj;
+		ArrayList<Customer> customers = new ArrayList<>();	
+		try {
+			PreparedStatement statement = conn.prepareStatement(queryString);
+			statement.setString(1, user.getUserName());
+			ResultSet cursor = statement.executeQuery();
+			while(cursor.next()) {
+				Customer customer = new Customer(
+					cursor.getInt("customerId"), 
+					cursor.getString("customerName"), 
+					cursor.getInt("addressId"), 
+					cursor.getInt("active"),
+					cursor.getString("createdBy"));
+				customers.add(customer);
+			}
+			return customers;
+		} catch (SQLException e) {
+			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
+			  return customers;
+		}
+
 
 	}
 
@@ -842,6 +904,26 @@ public class DatabaseQueryBank {
 			ResultSet cursor = statement.executeQuery();
 		} catch (SQLException e) {
 			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
+		}
+	}
+
+	private Object uunGetAllUsers(Connection conn, Object queryObj) {
+		String queryString = "SELECT * FROM user";
+		ArrayList<User> users = new ArrayList<User>();
+		try {
+			PreparedStatement statement = conn.prepareStatement(queryString);
+			ResultSet cursor = statement.executeQuery();
+			while(cursor.next()) {
+				User user = new User(
+					cursor.getInt("userId"), 
+					cursor.getString("userName"), 
+					cursor.getInt("active"));
+				users.add(user);
+			}
+			return users;
+		} catch (SQLException e) {
+			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
+			  return users;
 		}
 	}
 
