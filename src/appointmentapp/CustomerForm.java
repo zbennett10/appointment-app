@@ -24,6 +24,7 @@ import javafx.stage.Stage;
 /**
  *
  * @author Zachary Bennett 
+ * This class handles the Customer Form View
  */
 public class CustomerForm {
 	User user;
@@ -56,6 +57,11 @@ public class CustomerForm {
 		this.scene = new Scene(this.grid, 800, 600);
 		this.sceneTitle = new Text(customer == null ? "Add Customer" : "Customer: " + customer.getCustomerName());
 		this.configureForm();
+
+		/*
+		* If there is no customer to update just configure a customer insertion form
+		* otherwise configure update-specific logic 
+		*/
 		if(customer == null) {
 			this.configureAddCustomerBtn();
 		} else {
@@ -66,7 +72,10 @@ public class CustomerForm {
 			this.configureUpdateCustomerBtn();
 		}
 	}
-
+	
+	/*
+	* This interface provides a foundational type in order to show alerts via lambda function.
+	*/
 	interface IFormError {
 		void showFormAlert(String alert);
 	}
@@ -75,13 +84,7 @@ public class CustomerForm {
 		Alert alert = new Alert(AlertType.ERROR, message);
 		alert.show();
 	};
-
-	private boolean isStringFieldInvalid(String field) {
-		return Pattern.compile("[0-9\\.\\-\\/()]+", Pattern.CASE_INSENSITIVE)
-			      .matcher(field)
-		     	      .find();
-	}
-
+	
 	private boolean isPostalCodeInvalid(String postalCode) {
 		return !Pattern.compile("^[0-9]{5}(-[0-9]{4})?$", Pattern.CASE_INSENSITIVE)
 			      .matcher(postalCode)
@@ -94,10 +97,6 @@ public class CustomerForm {
 			      .find();
 	}
 
-	private boolean isFieldOnlyWhitespace(String fieldValue) {
-		return fieldValue.trim().length() == 0;
-	}
-
 	private void setInitialFormValues() {
 		this.customerNameInput.setText(this.customer.getCustomerName());
 		this.customerAddressOneInput.setText(this.customerAddress.getAddress());
@@ -107,7 +106,10 @@ public class CustomerForm {
 		this.customerPhoneInput.setText(this.customerAddress.getPhone());
 		this.customerCountryInput.setText(this.customerCountry.getCountry());
 	}
-
+	
+	/*
+	* This function bootstraps the form and event listeners.
+	*/
 	private void configureForm() {
 		Label nameLabel = new Label("Name: ");
 		grid.add(nameLabel, 0, 1);
@@ -149,7 +151,10 @@ public class CustomerForm {
 		this.sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
 		this.grid.add(this.sceneTitle, 0, 0, 2, 1);
 	}
-
+	
+	/*
+	* This function bootstraps the button for updating customers.
+	*/
 	private void configureUpdateCustomerBtn() {
 		updateCustomerBtn = new Button("Update Customer");
 		updateCustomerBtn.setOnAction((ActionEvent e) -> {
@@ -162,22 +167,22 @@ public class CustomerForm {
 			String newCountryName = customerCountryInput.getText();
 			try {
 
-				if(newCustomerName.isEmpty() || this.isStringFieldInvalid(newCustomerName) || this.isFieldOnlyWhitespace(newCustomerName)) {
+				if(newCustomerName.isEmpty() || Util.isStringFieldInvalid(newCustomerName) || Util.isFieldOnlyWhitespace(newCustomerName)) {
 					throw new InvalidCustomerDataException("Please enter a valid customer name.");
 				} 
-				if(addressOne.isEmpty() || addressTwo.isEmpty() ||this.isFieldOnlyWhitespace(addressTwo) || this.isFieldOnlyWhitespace(addressOne)) {
+				if(addressOne.isEmpty() || addressTwo.isEmpty() ||Util.isFieldOnlyWhitespace(addressTwo) || Util.isFieldOnlyWhitespace(addressOne)) {
 					throw new InvalidCustomerDataException("Please enter a valid address for both address fields.");
 				}
-				if(newCityName.isEmpty() || this.isStringFieldInvalid(newCityName) || this.isFieldOnlyWhitespace(newCityName)) {
+				if(newCityName.isEmpty() || Util.isStringFieldInvalid(newCityName) || Util.isFieldOnlyWhitespace(newCityName)) {
 					throw new InvalidCustomerDataException("Please enter a valid city.");
 				}
-				if(postalCode.isEmpty() || this.isPostalCodeInvalid(postalCode) || this.isFieldOnlyWhitespace(postalCode)) {
+				if(postalCode.isEmpty() || this.isPostalCodeInvalid(postalCode) || Util.isFieldOnlyWhitespace(postalCode)) {
 					throw new InvalidCustomerDataException("Please enter a valid postal code.");
 				}
-				if(phone.isEmpty() || this.isPhoneInvalid(phone) || this.isFieldOnlyWhitespace(phone)) {
+				if(phone.isEmpty() || this.isPhoneInvalid(phone) || Util.isFieldOnlyWhitespace(phone)) {
 					throw new InvalidCustomerDataException("Please enter a valid phone number.");
 				}
-				if(newCountryName.isEmpty() || this.isStringFieldInvalid(newCountryName) || this.isFieldOnlyWhitespace(newCountryName)) {
+				if(newCountryName.isEmpty() || Util.isStringFieldInvalid(newCountryName) || Util.isFieldOnlyWhitespace(newCountryName)) {
 					throw new InvalidCustomerDataException("Please enter a valid country.");
 				}
 
@@ -211,7 +216,10 @@ public class CustomerForm {
 
 		this.grid.add(updateBtnContainer, 0, 8);
 	}
-
+	
+	/*
+	* This function configures the button for inserting customers into the database.
+	*/
 	private void configureAddCustomerBtn() {
 		addCustomerBtn = new Button("Add Customer");
 		addCustomerBtn.setOnAction((ActionEvent e) -> {
@@ -224,22 +232,22 @@ public class CustomerForm {
 			String customerCountry = customerCountryInput.getText();
 			
 			try {
-				if(customerName.isEmpty() || this.isStringFieldInvalid(customerName) || this.isFieldOnlyWhitespace(customerName)) {
+				if(customerName.isEmpty() || Util.isStringFieldInvalid(customerName) || Util.isFieldOnlyWhitespace(customerName)) {
 					throw new InvalidCustomerDataException("Please enter a valid customer name.");
 				} 
-				if(addressOne.isEmpty() || addressTwo.isEmpty() ||this.isFieldOnlyWhitespace(addressTwo) || this.isFieldOnlyWhitespace(addressOne)) {
+				if(addressOne.isEmpty() || addressTwo.isEmpty() ||Util.isFieldOnlyWhitespace(addressTwo) || Util.isFieldOnlyWhitespace(addressOne)) {
 					throw new InvalidCustomerDataException("Please enter a valid address for both address fields.");
 				}
-				if(customerCity.isEmpty() || this.isStringFieldInvalid(customerCity) || this.isFieldOnlyWhitespace(customerCity)) {
+				if(customerCity.isEmpty() || Util.isStringFieldInvalid(customerCity) || Util.isFieldOnlyWhitespace(customerCity)) {
 					throw new InvalidCustomerDataException("Please enter a valid city.");
 				}
-				if(postalCode.isEmpty() || this.isPostalCodeInvalid(postalCode) || this.isFieldOnlyWhitespace(postalCode)) {
+				if(postalCode.isEmpty() || this.isPostalCodeInvalid(postalCode) || Util.isFieldOnlyWhitespace(postalCode)) {
 					throw new InvalidCustomerDataException("Please enter a valid postal code.");
 				}
-				if(phone.isEmpty() || this.isPhoneInvalid(phone) || this.isFieldOnlyWhitespace(phone)) {
+				if(phone.isEmpty() || this.isPhoneInvalid(phone) || Util.isFieldOnlyWhitespace(phone)) {
 					throw new InvalidCustomerDataException("Please enter a valid phone number.");
 				}
-				if(customerCountry.isEmpty() || this.isStringFieldInvalid(customerCountry) || this.isFieldOnlyWhitespace(customerCountry)) {
+				if(customerCountry.isEmpty() || Util.isStringFieldInvalid(customerCountry) || Util.isFieldOnlyWhitespace(customerCountry)) {
 					throw new InvalidCustomerDataException("Please enter a valid country.");
 				}
 
@@ -272,11 +280,25 @@ public class CustomerForm {
 		this.grid.add(addBtnContainer, 0, 8);
 	}
 
+	private void configureBackBtn() {
+		Button backBtn = new Button("Back");
+		backBtn.setOnAction((ActionEvent e) -> {
+			UserHomePage homePage = new UserHomePage(primaryStage, user, queryBank);
+			homePage.render(false);
+		});
+
+		HBox backBtnContainer = new HBox(10);
+		backBtnContainer.setAlignment(Pos.BOTTOM_CENTER);
+		backBtnContainer.getChildren().add(backBtn);
+
+		this.grid.add(backBtnContainer, 1, 8);
+	}
+
 	public void render() {
 		this.configureHeadline();
+		this.configureBackBtn();
 		this.primaryStage.setScene(this.scene);
 		this.primaryStage.show();
 	}
-
 		
 }

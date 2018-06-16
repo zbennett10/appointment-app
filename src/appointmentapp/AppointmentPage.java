@@ -5,17 +5,9 @@
  */
 package appointmentapp;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.TimeZone;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.time.OffsetTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -25,7 +17,6 @@ import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -53,6 +44,7 @@ import javafx.util.converter.LocalTimeStringConverter;
 /**
  *
  * @author Zachary Bennett 
+ * This class represents the Appointment Page and allows for the insertion and update of appointments.
  */
 public class AppointmentPage {
 	User user;
@@ -79,6 +71,33 @@ public class AppointmentPage {
 	Alert formError; 
 	DatabaseQueryBank queryBank;
 
+	/*
+		Credit for this time converter goes to James_D from 
+		https://stackoverflow.com/questions/32613619/how-to-make-a-timespinner-in-javafx
+	*/
+	private final LocalTimeStringConverter timeConverter = new LocalTimeStringConverter() {
+		    @Override
+		    public String toString(LocalTime time) {
+			return DateTimeFormatter.ofPattern("HH:mm").format(time);
+		    }
+
+		    @Override
+		    public LocalTime fromString(String string) {
+			String[] enteredDigits = string.split(":");
+			int hours = getIntField(enteredDigits, 0);
+			int minutes = getIntField(enteredDigits, 1);
+			int totalSeconds = (hours * 60 + minutes) * 60;
+			return LocalTime.of((totalSeconds / 3600) % 24, (totalSeconds / 60) % 60);
+		    }
+
+		    private int getIntField(String[] digits, int index) {
+			if (digits.length <= index || digits[index].isEmpty()) {
+			    return 0 ;
+			}
+			return Integer.parseInt(digits[index]);
+		    }
+	};
+
 	public AppointmentPage(Stage primaryStage, Appointment appointment, DatabaseQueryBank queryBank, User user) {
 		this.user = user;
 		this.primaryStage = primaryStage;	
@@ -88,6 +107,11 @@ public class AppointmentPage {
 		this.scene = new Scene(this.grid, 800, 600);
 		this.sceneTitle = new Text(appointment == null ? "Add Appointment" : "Appointment: " + appointment.getTitle());
 		this.allAppointments = (ArrayList<Appointment>) queryBank.getAppointmentsByUser(user);
+
+		/*
+		* If no appointment is given to page, configure page for appointment insertion
+		* otherwise configure the page for updating appointments.
+		*/
 		if(appointment == null) {
 			this.configureAddAppointmentBtn();
 			ArrayList<Customer> userCustomers = (ArrayList<Customer>) queryBank.getCustomers(user);
@@ -101,12 +125,10 @@ public class AppointmentPage {
 			this.configureUpdateAppointmentBtn();
 		}
 	}
-
-	private void configureHeadline() {
-		this.sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-		this.grid.add(this.sceneTitle, 0, 0, 2, 1);
-	}
-
+	
+	/*
+	* This interface allows for the use of lambda functions to set alerts.
+	*/
 	interface IFormError {
 		void showFormAlert(String alert);
 	}
@@ -115,17 +137,16 @@ public class AppointmentPage {
 		Alert alert = new Alert(AlertType.ERROR, message);
 		alert.show();
 	};
-
-	private boolean isStringFieldInvalid(String field) {
-		return Pattern.compile("[0-9\\.\\-\\/()]+", Pattern.CASE_INSENSITIVE)
-			      .matcher(field)
-		     	      .find();
+	
+	private void configureHeadline() {
+		this.sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
+		this.grid.add(this.sceneTitle, 0, 0, 2, 1);
 	}
-
-	private boolean isFieldOnlyWhitespace(String fieldValue) {
-		return fieldValue.trim().length() == 0;
-	}
-
+	
+	
+	/*
+	* This function bootstraps the button for adding an appointment to the database.
+	*/
 	private void configureAddAppointmentBtn() {
 		scheduleApptBtn = new Button("Schedule Appointment");
 		scheduleApptBtn.setOnAction((ActionEvent e) -> {
@@ -144,16 +165,16 @@ public class AppointmentPage {
 				if(this.appointmentCustomer == null) {
 					throw new InvalidAppointmentDataException("Please select an associated customer for this appointment.");
 				}
-				if(apptTitle.isEmpty() || this.isStringFieldInvalid(apptTitle) || this.isFieldOnlyWhitespace(apptTitle)) {
+				if(apptTitle.isEmpty() || Util.isStringFieldInvalid(apptTitle) || Util.isFieldOnlyWhitespace(apptTitle)) {
 					throw new InvalidAppointmentDataException("Please enter a valid appointment title.");
 				} 
-				if(apptDesc.isEmpty() || this.isFieldOnlyWhitespace(apptDesc)) {
+				if(apptDesc.isEmpty() || Util.isFieldOnlyWhitespace(apptDesc)) {
 					throw new InvalidAppointmentDataException("Please enter a description.");
 				}
-				if(apptLocation.isEmpty() || this.isFieldOnlyWhitespace(apptLocation)) {
+				if(apptLocation.isEmpty() || Util.isFieldOnlyWhitespace(apptLocation)) {
 					throw new InvalidAppointmentDataException("Please enter a location.");
 				}
-				if(apptContact.isEmpty() || this.isFieldOnlyWhitespace(apptContact)) {
+				if(apptContact.isEmpty() || Util.isFieldOnlyWhitespace(apptContact)) {
 					throw new InvalidAppointmentDataException("Please enter a contact.");
 				}
 				int startHours = newStartDate.getHours();
@@ -177,9 +198,6 @@ public class AppointmentPage {
 							throw new InvalidAppointmentDataException("Appointments may not overlap. The overlapping appointment starts at " + overlapAppt.getStart().toString() + " and ends at " + overlapAppt.getEnd().toString() + ".");
 						
 				}
-
-				//check for valid appointments times, appointment overlap, etc
-
 			} catch(InvalidAppointmentDataException error) {
 				formAlertSetter.showFormAlert(error.getMessage());
 				return;	
@@ -211,7 +229,10 @@ public class AppointmentPage {
 		this.grid.add(scheduleApptBtn, 0, 8);
 
 	}
-
+	
+	/*
+	* This function bootstraps the button for updating an appointment.
+	*/
 	private void configureUpdateAppointmentBtn() {
 		updateApptBtn = new Button("Update Appointment");
 		updateApptBtn.setOnAction((ActionEvent e) -> {
@@ -228,16 +249,16 @@ public class AppointmentPage {
 			Date newEndDate = new Date(apptEndDate.getYear(), apptEndDate.getMonth(), apptEndDate.getDate(), apptEndTime.getHour(), apptEndTime.getMinute());
 			
 			try {
-				if(apptTitle.isEmpty() || this.isStringFieldInvalid(apptTitle) || this.isFieldOnlyWhitespace(apptTitle)) {
+				if(apptTitle.isEmpty() || Util.isStringFieldInvalid(apptTitle) || Util.isFieldOnlyWhitespace(apptTitle)) {
 					throw new InvalidAppointmentDataException("Please enter a valid appointment title.");
 				} 
-				if(apptDesc.isEmpty() || this.isFieldOnlyWhitespace(apptDesc)) {
+				if(apptDesc.isEmpty() || Util.isFieldOnlyWhitespace(apptDesc)) {
 					throw new InvalidAppointmentDataException("Please enter a description.");
 				}
-				if(apptLocation.isEmpty() || this.isFieldOnlyWhitespace(apptLocation)) {
+				if(apptLocation.isEmpty() || Util.isFieldOnlyWhitespace(apptLocation)) {
 					throw new InvalidAppointmentDataException("Please enter a location.");
 				}
-				if(apptContact.isEmpty() || this.isFieldOnlyWhitespace(apptContact)) {
+				if(apptContact.isEmpty() || Util.isFieldOnlyWhitespace(apptContact)) {
 					throw new InvalidAppointmentDataException("Please enter a contact.");
 				}
 				int startHours = newStartDate.getHours();
@@ -262,9 +283,6 @@ public class AppointmentPage {
 							throw new InvalidAppointmentDataException("Appointments may not overlap. The overlapping appointment starts at " + overlapAppt.getStart().toString() + " and ends at " + overlapAppt.getEnd().toString() + ".");
 						
 				}
-
-				//check for valid appointments times, appointment overlap, etc
-
 			} catch(InvalidAppointmentDataException error) {
 				formAlertSetter.showFormAlert(error.getMessage());
 				return;	
@@ -297,30 +315,44 @@ public class AppointmentPage {
 
 	}
 
-	private void setInitialFormValues() {
-		try {
+	/*
+	* This function translates Date objects into LocalDate objects.
+	*/
+	private LocalDate convertDateToLocalDate(Date date) {
+		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
+	
+		//Get Timezone Offset
+		ZonedDateTime zonedTime = date.toInstant().atZone(ZoneId.systemDefault());
+		int timezoneOffset  = zonedTime.getOffset().getTotalSeconds() / 3600;
 
+		//Make sure zoned datetime is set to UTC
+		ZonedDateTime utcTime = date.toInstant().atZone(ZoneId.of("UTC"));
+		return utcTime.withZoneSameInstant((ZoneId.systemDefault())).toLocalDate();
+	}
+	
+	/*
+	* This function handles converting UTC dates into LocalTimes which correspond to the current timezone.
+	*/
+	private LocalTime convertDateToLocalTime(Date date) {
 		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
 
-		Date startDate = this.appointment.getStart();
-		Date endDate = this.appointment.getEnd();
-		DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-		// convert the timestamp to a zoneddatetime
-		ZonedDateTime z2 = startDate.toInstant().atZone(ZoneId.systemDefault());
-		int timezoneOffset  = z2.getOffset().getTotalSeconds() / 3600;
+		//Get Timezone Offset
+		ZonedDateTime zonedTime = date.toInstant().atZone(ZoneId.systemDefault());
+		int timezoneOffset  = zonedTime.getOffset().getTotalSeconds() / 3600;
 
-		ZonedDateTime baseStart = startDate.toInstant().atZone(ZoneId.of("UTC"));
-		ZonedDateTime localStart = baseStart.withZoneSameInstant(ZoneId.systemDefault());
-		ZonedDateTime baseEnd = endDate.toInstant().atZone(ZoneId.of("UTC"));
-		ZonedDateTime localEnd = baseEnd.withZoneSameInstant(ZoneId.systemDefault());
+		//Make sure zoned datetime is set to UTC
+		ZonedDateTime utcTime = date.toInstant().atZone(ZoneId.of("UTC"));
+		ZonedDateTime localDateTime = utcTime.withZoneSameInstant(ZoneId.systemDefault());
 
-		LocalDate startLocalDate = baseStart.withZoneSameInstant((ZoneId.systemDefault())).toLocalDate();
-		LocalTime startLocalTime = LocalTime.parse(dateFormatter.format(localStart));
-		startLocalTime = LocalTime.of(startLocalTime.getHour() + timezoneOffset, startLocalTime.getMinute()); 
-
-		LocalDate endLocalDate = endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-		LocalTime endLocalTime = LocalTime.parse(dateFormatter.format(localEnd));
-		endLocalTime = LocalTime.of(endLocalTime.getHour() + timezoneOffset, endLocalTime.getMinute()); 
+		LocalTime startLocalTime = LocalTime.parse(dateFormatter.format(localDateTime));
+		return LocalTime.of(startLocalTime.getHour() + timezoneOffset, startLocalTime.getMinute()); 
+	}
+	
+	private void setInitialFormValues() {
+		LocalDate startLocalDate = this.convertDateToLocalDate(this.appointment.getStart());
+		LocalTime startLocalTime = this.convertDateToLocalTime(this.appointment.getStart());
+		LocalDate endLocalDate = this.convertDateToLocalDate(this.appointment.getEnd());
+		LocalTime endLocalTime = this.convertDateToLocalTime(this.appointment.getEnd());
 
 		this.appointmentTitleInput.setText(this.appointment.getTitle());
 		this.appointmentDescriptionInput.setText(this.appointment.getDescription());
@@ -330,16 +362,16 @@ public class AppointmentPage {
 		this.startTimeSpinner.getValueFactory().setValue(startLocalTime);
 		this.appointmentEndInput.setValue(endLocalDate);
 		this.endTimeSpinner.getValueFactory().setValue(endLocalTime);
-		} catch (Exception e) {
-
-		}
 	}
 
 	public void renderCustomerView(Customer customer) {
 		CustomerForm customerForm = new CustomerForm(this.primaryStage, customer, this.queryBank, this.user);
 		customerForm.render();
 	}
-
+	
+	/*
+	* This function bootstraps the form/event listeners.
+	*/
 	private void configureForm() {
 		Label titleLabel = new Label("Type: ");
 		grid.add(titleLabel, 0, 1);
@@ -394,32 +426,6 @@ public class AppointmentPage {
 		appointmentStartInput = new DatePicker();
 		grid.add(appointmentStartInput, 1, 6);
 
-		/*
-			Credit for this time converter goes to James_D from 
-			https://stackoverflow.com/questions/32613619/how-to-make-a-timespinner-in-javafx
-		*/
-		LocalTimeStringConverter timeConverter = new LocalTimeStringConverter() {
-			    @Override
-			    public String toString(LocalTime time) {
-				return DateTimeFormatter.ofPattern("HH:mm").format(time);
-			    }
-
-			    @Override
-			    public LocalTime fromString(String string) {
-				String[] enteredDigits = string.split(":");
-				int hours = getIntField(enteredDigits, 0);
-				int minutes = getIntField(enteredDigits, 1);
-				int totalSeconds = (hours * 60 + minutes) * 60;
-				return LocalTime.of((totalSeconds / 3600) % 24, (totalSeconds / 60) % 60);
-			    }
-
-			    private int getIntField(String[] digits, int index) {
-				if (digits.length <= index || digits[index].isEmpty()) {
-				    return 0 ;
-				}
-				return Integer.parseInt(digits[index]);
-			    }
-		};
 
 		this.startTimeSpinner = new Spinner(new SpinnerValueFactory() {
 
@@ -455,7 +461,11 @@ public class AppointmentPage {
 		appointmentEndInput = new DatePicker();
 		grid.add(appointmentEndInput, 1, 7);
 		
-			
+		startTimeSpinner.focusedProperty().addListener((observable, oldValue, newValue) -> {
+		  if (!newValue) {
+		    startTimeSpinner.increment(0); 
+		  }
+		});			
 
 		this.endTimeSpinner = new Spinner(new SpinnerValueFactory() {
 
@@ -483,12 +493,34 @@ public class AppointmentPage {
 			    }
 			}
 	        });
+
+		endTimeSpinner.focusedProperty().addListener((observable, oldValue, newValue) -> {
+		  if (!newValue) {
+		    endTimeSpinner.increment(0); 
+		  }
+		});			
+
 	        endTimeSpinner.setEditable(true);
 		grid.add(endTimeSpinner, 2, 7);
 	}
 
+	private void configureBackBtn() {
+		Button backBtn = new Button("Back");
+		backBtn.setOnAction((ActionEvent e) -> {
+			UserHomePage homePage = new UserHomePage(primaryStage, user, queryBank);
+			homePage.render(false);
+		});
+
+		HBox backBtnContainer = new HBox(10);
+		backBtnContainer.setAlignment(Pos.BOTTOM_CENTER);
+		backBtnContainer.getChildren().add(backBtn);
+
+		this.grid.add(backBtnContainer, 1, 8);
+	}
+
 	public void render() {
 		this.configureHeadline();
+		this.configureBackBtn();
 		this.primaryStage.setScene(this.scene);
 		this.primaryStage.show();
 	}

@@ -6,3 +6,4 @@ nbdist/
 .nb-gradle/
 .DS_Store
 login.txt
+/Archive/nbproject/private/

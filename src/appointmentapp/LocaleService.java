@@ -6,12 +6,13 @@
 package appointmentapp;
 
 import java.util.Locale;
-import java.util.Properties;
 import java.util.ResourceBundle;
 
 /**
  *
  * @author Zachary Bennett	 
+ * This singleton provides a simple API for handling the current application locale
+ * and translating labels on the login/registration pages appropriately.
  */
 
 public class LocaleService {

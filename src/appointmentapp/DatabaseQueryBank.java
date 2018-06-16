@@ -15,25 +15,25 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 /**
  *
  * @author Zachary Bennett
+ * This class provides an API for interacting with the database.
  */
 public class DatabaseQueryBank {
 	private final String DATABASE_URL = "jdbc:mysql://52.206.157.109/U04tYO?";
 	
+	/*
+	* Define constants which point to functions containing statements to run against the database.
+	* Reflection is used to map these constants to their corresponding functions.
+	*/
 	private final String GET_ALL_USERS = "runGetAllUsers";
 	private final String GET_USER = "runGetUser";
 	private final String INSERT_USER = "runInsertUser";
@@ -68,17 +68,10 @@ public class DatabaseQueryBank {
 	private final String INSERT_CUSTOMER = "runInsertCustomer";
 	private final String DELETE_CUSTOMER = "runDeleteCustomer";
 	private final String UPDATE_CUSTOMER = "runUpdateCustomer";
-
-	private final String GET_INCREMENT_TYPES = "runGetIncrementTypes";
-	private final String INSERT_INCREMENT_TYPES = "runInsertIncrementTypes";
-	private final String DELETE_INCREMENT_TYPES = "runDeleteIncrementTypes";
-	private final String UPDATE_INCREMENT_TYPES = "runUpdateIncrementTypes";
-
-	private final String GET_REMINDER = "runGetReminder";
-	private final String INSERT_REMINDER = "runInsertReminder";
-	private final String DELETE_REMINDER = "runDeleteReminder";
-	private final String UPDATE_REMINDER = "runUpdateReminder";
-
+	
+	/*
+	* Public API
+	*/
 	public Object getAddress(Object queryObj) {
 		return executeQuery(getQueryMethod(GET_ADDRESS), queryObj);
 	}
@@ -175,38 +168,6 @@ public class DatabaseQueryBank {
 		executeQuery(getQueryMethod(UPDATE_CUSTOMER), queryObj);
 	}
 
-	public Object getIncrementTypes(Object queryObj) {
-		return executeQuery(getQueryMethod(GET_INCREMENT_TYPES), queryObj);
-	}
-
-	public void insertIncrementTypes(Object queryObj ) {
-		executeQuery(getQueryMethod(INSERT_INCREMENT_TYPES), queryObj);
-	}
-
-	public void deleteIncrementTypes(Object queryObj) {
-		executeQuery(getQueryMethod(DELETE_INCREMENT_TYPES), queryObj);
-	}
-
-	public void updateIncrementTypes(Object queryObj) {
-		executeQuery(getQueryMethod(UPDATE_INCREMENT_TYPES), queryObj);
-	}
-
-	public Object getReminder(Object queryObj) {
-		return executeQuery(getQueryMethod(GET_REMINDER), queryObj);
-	}
-
-	public void insertReminder(Object queryObj ) {
-		executeQuery(getQueryMethod(INSERT_REMINDER), queryObj);
-	}
-
-	public void deleteReminder(Object queryObj) {
-		executeQuery(getQueryMethod(DELETE_REMINDER), queryObj);
-	}
-
-	public void updateReminder(Object queryObj) {
-		executeQuery(getQueryMethod(UPDATE_REMINDER), queryObj);
-	}
-
 	public Object getAllUsers(Object queryObj) {
 		return executeQuery(getQueryMethod(GET_ALL_USERS), null);	
 	}
@@ -234,6 +195,11 @@ public class DatabaseQueryBank {
 	public void updateUser(Object queryObj) {
 		executeQuery(getQueryMethod(UPDATE_USER), queryObj);
 	}
+
+	/*
+	* Private API
+	* These functions run queries against the database and are mapped to the public API via reflection.
+	*/
 
 	private void runDeleteAddress(Connection conn, Object queryObj) {
 		String queryString = "DELETE FROM address WHERE addressId = ?";
@@ -372,6 +338,13 @@ public class DatabaseQueryBank {
 		Appointment appointment = (Appointment) queryObj;
 		String queryString = "UPDATE appointment SET title = ?, description = ?, location = ?, contact = ?, url = ?, start = ?, end =?,"
 			+ " lastUpdate = ?, lastUpdateBy = ? WHERE appointmentId = ?";
+
+		 ZonedDateTime startUTC = appointment.getStart().toInstant().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"));
+		ZonedDateTime endUTC = appointment.getEnd().toInstant().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"));            
+		
+		Timestamp startTimestamp = Timestamp.valueOf(startUTC.toLocalDateTime()); //this value can be inserted into database
+		Timestamp endTimestamp = Timestamp.valueOf(endUTC.toLocalDateTime()); //this value can be inserted into database 
+
 		try {
 			PreparedStatement statement = conn.prepareStatement(queryString);
 			Long timestamp = System.currentTimeMillis();
@@ -380,8 +353,8 @@ public class DatabaseQueryBank {
 			statement.setString(3, appointment.getLocation());
 			statement.setString(4, appointment.getContact());
 			statement.setString(5, appointment.getUrl());
-			statement.setTimestamp(6, new Timestamp(appointment.getStart().getTime()));
-			statement.setTimestamp(7, new Timestamp(appointment.getEnd().getTime()));
+			statement.setTimestamp(6, startTimestamp);
+			statement.setTimestamp(7, endTimestamp);
 			statement.setTimestamp(8, new Timestamp(timestamp));
 			statement.setString(9, appointment.getLastUpdateBy());
 			statement.setInt(10, appointment.getAppointmentId());
@@ -398,8 +371,8 @@ public class DatabaseQueryBank {
 		 ZonedDateTime startUTC = appointment.getStart().toInstant().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"));
 		ZonedDateTime endUTC = appointment.getEnd().toInstant().atZone(ZoneId.systemDefault()).withZoneSameInstant(ZoneId.of("UTC"));            
 		
-		Timestamp startTimestamp = Timestamp.valueOf(startUTC.toLocalDateTime()); //this value can be inserted into database
-		Timestamp endTimestamp = Timestamp.valueOf(endUTC.toLocalDateTime()); //this value can be inserted into database 
+		Timestamp startTimestamp = Timestamp.valueOf(startUTC.toLocalDateTime()); 
+		Timestamp endTimestamp = Timestamp.valueOf(endUTC.toLocalDateTime());  
 
 		try {
 			PreparedStatement statement = conn.prepareStatement(queryString);
@@ -768,133 +741,6 @@ public class DatabaseQueryBank {
 		}
 	}
 
-	private void runDeleteReminder(Connection conn, Object queryObj) {
-		String queryString = "DELETE FROM reminder WHERE reminderId = ?";
-		int reminderId = (int) queryObj;
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setInt(1, reminderId);
-			ResultSet cursor = statement.executeQuery();
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-		}
-	}
-	
-	private Object runGetReminder(Connection conn, Object queryObj){
-		String queryString = "SELECT * FROM reminder WHERE reminderId = ?";
-		Reminder reminder = null;	
-		int reminderId = (int) queryObj;
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setInt(1, reminderId);
-			ResultSet cursor = statement.executeQuery();
-			while(cursor.next()) {
-				reminder = new Reminder(
-					cursor.getInt("reminderId"), 
-					new Date(cursor.getTimestamp("reminderDate").getTime()),
-					cursor.getInt("snoozeIncrement"),
-					cursor.getInt("snoozeIncrementTypeId"),
-					cursor.getInt("appointmentId")
-				);
-			}
-			return reminder;
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-			  return reminder;
-		}
-	}
-
-	private void runUpdateReminder(Connection conn, Object queryObj) {
-		Reminder reminder = (Reminder) queryObj;
-		String queryString = "UPDATE reminder SET reminderDate = ?, snoozeIncrement = ?, snoozeIncrementTypeId = ?, appointmentId = ? WHERE reminderId = ?";
-
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setTimestamp(1, new Timestamp(reminder.getReminderDate().getTime()));
-			statement.setInt(2, reminder.getSnoozeIncrement());
-			statement.setInt(3, reminder.getSnoozeIncrementTypeId());
-			statement.setInt(4, reminder.getAppointmentId());
-			statement.setInt(8, reminder.getReminderId());
-			statement.execute();
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-		}
-	}
-
-	private void runInsertIncrementType(Connection conn,  Object queryObj){
-		SnoozeIncrementType incrementType = (SnoozeIncrementType) queryObj;
-		String queryString = "INSERT INTO incrementtypes (incrementTypeDescription)" + " values (?)";
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setString(1, incrementType.getIncrementTypeDescription());
-			statement.execute();
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-		}
-	}
-
-	private void runDeleteIncrementType(Connection conn, Object queryObj) {
-		String queryString = "DELETE FROM incrementtypes WHERE incrementTypeId = ?";
-		int incrementTypeId = (int) queryObj;
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setInt(1, incrementTypeId);
-			ResultSet cursor = statement.executeQuery();
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-		}
-	}
-	
-	private Object runGetIncrementType(Connection conn, Object queryObj){
-		String queryString = "SELECT * FROM incrementtypes WHERE incrementTypeId = ?";
-		SnoozeIncrementType incrementType = null;	
-		int incrementTypeId = (int) queryObj;
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setInt(1, incrementTypeId);
-			ResultSet cursor = statement.executeQuery();
-			while(cursor.next()) {
-				incrementType = new SnoozeIncrementType(
-					cursor.getInt("incrementTypeId"), 
-					cursor.getString("incrementTypeDescription")
-				);
-			}
-			return incrementType;
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-			  return incrementType;
-		}
-	}
-
-	private void runUpdateIncrementType(Connection conn, Object queryObj) {
-		SnoozeIncrementType incrementType = (SnoozeIncrementType) queryObj;
-		String queryString = "UPDATE incrementtypes SET incrementTypeDescription = ? WHERE incrementTypeId = ?";
-
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setString(1, incrementType.getIncrementTypeDescription());
-			statement.setInt(2, incrementType.getIncrementTypeId());
-			statement.execute();
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-		}
-	}
-
-	private void runInsertReminder(Connection conn,  Object queryObj){
-		Reminder reminder = (Reminder) queryObj;
-		String queryString = "INSERT INTO reminder (reminderDate, snoozeIncrement, snoozeIncrementTypeId, appointmentId)" + " values (?, ?, ?, ?)";
-		try {
-			PreparedStatement statement = conn.prepareStatement(queryString);
-			statement.setTimestamp(1, new Timestamp(reminder.getReminderDate().getTime()));
-			statement.setInt(2, reminder.getSnoozeIncrement());
-			statement.setInt(3, reminder.getSnoozeIncrementTypeId());
-			statement.setInt(4, reminder.getAppointmentId());
-			statement.execute();
-		} catch (SQLException e) {
-			  Logger.getLogger(DatabaseQueryBank.class.getName()).log(Level.SEVERE, null, e);
-		}
-	}
-
 	private void runDeleteUser(Connection conn, Object queryObj) {
 		String queryString = "DELETE FROM user WHERE userId = ?";
 		int userId = (int) queryObj;
@@ -907,7 +753,7 @@ public class DatabaseQueryBank {
 		}
 	}
 
-	private Object uunGetAllUsers(Connection conn, Object queryObj) {
+	private Object runGetAllUsers(Connection conn, Object queryObj) {
 		String queryString = "SELECT * FROM user";
 		ArrayList<User> users = new ArrayList<User>();
 		try {
@@ -1039,7 +885,12 @@ public class DatabaseQueryBank {
 			  return userId;
 		}
 	}
-
+	
+	/*
+	* This function invokes a given query with the specified query object. In order to keep this function generic,
+	* the 'Object' type is used here and is cast into it's specific type by the query function that uses it.
+	* This function is meant to be used by the public query API.
+	*/
 	private Object executeQuery(Method query, Object queryObj) {
 	   try (Connection connection = DriverManager.getConnection(DATABASE_URL+"user=U04tYO" + "&password=53688344230")) {
 		return query.invoke(this, connection, queryObj);
@@ -1048,7 +899,10 @@ public class DatabaseQueryBank {
 		return null;
 	   }
 	}
-
+	
+	/*
+	* This helper method uses reflection to map function name constants to their corresponding private API method.
+	*/
 	private Method getQueryMethod(String methodName) {
 		try {	
 			return DatabaseQueryBank.class.getDeclaredMethod(methodName, Connection.class, Object.class);

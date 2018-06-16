@@ -6,9 +6,7 @@
 package appointmentapp;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Locale;
-import java.util.TimeZone;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -37,6 +35,7 @@ import javafx.scene.paint.Color;
 /**
  *
  * @author Zachary Bennett
+ * This class bootstraps the JavaFX Desktop Application
  */
 public class AppointmentApp extends Application {
 	private Logger loginLogger;
@@ -53,7 +52,10 @@ public class AppointmentApp extends Application {
 	private Button registerBtn;
 	private Button signupBtn;
 	private Button backToLoginBtn;
-		
+	
+	/*
+	* This interface is used to expose a lambda function that sets alerts.
+	*/	
 	interface IAlert {
 		void setAlertText(String alert);
 	}
@@ -62,30 +64,34 @@ public class AppointmentApp extends Application {
     
    @Override
     public void start(Stage primaryStage) {
-	// In order to test language setting based on locale, uncomment the line below 
+	// In order to test the changing of languages of the login page, uncomment the line below 
 	// Locale.setDefault(new Locale("fr", "FR")); 
-	 Locale.setDefault(new Locale("fr", "FR")); 
-
+	
 	locationService = LocaleService.getInstance();
 	appLocale = locationService.getLocale();
 	initiateLogger();
 	this.queryBank = new DatabaseQueryBank(); 
 	renderLoginForm(primaryStage);
     }
-
+	
+    /*
+    * This function writes a login timestamp out to the login.txt file every time a user logs in.
+    */
     private void initiateLogger() {
 	this.loginLogger = Logger.getLogger("LoginLog");  
 	FileHandler fh;  
-
 	try {  
 		fh = new FileHandler("./login.txt", true);  
 		this.loginLogger.addHandler(fh);
 		SimpleFormatter formatter = new SimpleFormatter();  
 		fh.setFormatter(formatter);  
 
-	} catch (Exception e) {}
+	} catch (Exception e) {System.out.println(e.getMessage());}
     }
-
+	
+    /*
+    * Bootstraps the view/event listeners for the Login Page
+    */
     private void renderLoginForm(Stage primaryStage) {
 	GridPane grid = new GridPane();
 	grid.setAlignment(Pos.CENTER);
@@ -167,7 +173,10 @@ public class AppointmentApp extends Application {
 	primaryStage.show();
 
     }
-
+	
+    /*
+    * This function sets the language of the Login Page based upon the Application Locale
+    */
     private void setLoginFormLabels() {
 	if(alertLabel.getText().isEmpty() != true && currentAlertKey != null) {
 		alertLabel.setText(locationService.getLocaleValueByKey(currentAlertKey));
@@ -178,7 +187,10 @@ public class AppointmentApp extends Application {
 	registerBtn.setText(locationService.getRegistrationLabel());
 	
     }
-
+	
+    /*
+    * This function sets the language of the Registration page based upon the Application Locale
+    */
     private void setRegistrationFormLabels() {
 	if(alertLabel.getText().isEmpty() != true && currentAlertKey != null) {
 		alertLabel.setText(locationService.getLocaleValueByKey(currentAlertKey));
@@ -189,7 +201,10 @@ public class AppointmentApp extends Application {
 	signupBtn.setText(locationService.getSignupLabel());
 	backToLoginBtn.setText(locationService.getBackToLoginLabel());
     }
-
+	
+    /*
+    * This function bootstraps the Registration Form view/event listeners
+    */
     private void renderRegistrationForm(Stage primaryStage) {
 	GridPane grid = new GridPane();
 	grid.setAlignment(Pos.CENTER);
@@ -307,10 +322,6 @@ public class AppointmentApp extends Application {
 
 	Scene scene = new Scene(grid, 400, 275);
 	primaryStage.setScene(scene);
-    }
-
-    private void setFormLabels() {
-		
     }
 
     /**

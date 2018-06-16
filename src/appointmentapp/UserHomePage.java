@@ -83,7 +83,10 @@ public class UserHomePage {
 		this.grid.setVgap(10);
 		this.grid.setPadding(new Insets(25, 25, 25, 25));
 	}
-
+	
+	/*
+	* This function configures the table for handling customers and bootstraps event listeners appropriately.
+	*/
 	private void configureCustomerTable() {
 		TableColumn<Customer, String> nameColumn = new TableColumn<>("Customers"); //set value of column to be name of customer
 		nameColumn.setCellValueFactory((CellDataFeatures<Customer, String> selectedCustomer) -> new ReadOnlyStringWrapper(selectedCustomer.getValue().getCustomerName()));
@@ -95,8 +98,6 @@ public class UserHomePage {
 		this.customerTable.setOnMouseClicked((MouseEvent event) -> {
 			Customer selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
 		    if (event.getClickCount() > 1 && selectedCustomer != null) {
-			this.renderCustomerView(selectedCustomer);
-		    } else if (event.getClickCount() == 1) {
 			TablePosition pos = customerTable.getSelectionModel().getSelectedCells().get(0);
 			int row = pos.getRow();
 			Object item = customerTable.getItems().get(row);
@@ -130,6 +131,8 @@ public class UserHomePage {
 				popup.centerOnScreen();
 			    	popup.getContent().addAll(popupContentCntr);
 			    	popup.show(primaryStage);
+			} else {
+				this.renderCustomerView(selectedCustomer);
 			}
 		    }
 		});
@@ -139,7 +142,10 @@ public class UserHomePage {
 
 		this.grid.add(this.customerTable, 0, 1);
 	}
-
+	
+	/*
+	* This function configures the appointment table and bootstraps event listeners appropriately.
+	*/
 	private void configureAppointmentCalendar() {
 		TableColumn<Appointment, String> titleColumn = new TableColumn<>("Appointments"); 
 		titleColumn.setCellValueFactory((CellDataFeatures<Appointment, String> selectedAppt) -> new ReadOnlyStringWrapper(selectedAppt.getValue().getTitle()));
@@ -151,8 +157,6 @@ public class UserHomePage {
 		this.appointmentTable.setOnMouseClicked((MouseEvent event) -> {
 			Appointment selectedAppt = this.appointmentTable.getSelectionModel().getSelectedItem();
 		    if (event.getClickCount() > 1 && selectedAppt != null) {
-			this.renderAppointmentView(selectedAppt);
-		    } else if (event.getClickCount() == 1 && selectedAppt != null) {
 			TablePosition pos = this.appointmentTable.getSelectionModel().getSelectedCells().get(0);
 			int row = pos.getRow();
 			Object item = this.appointmentTable.getItems().get(row);
@@ -187,6 +191,8 @@ public class UserHomePage {
 				popup.centerOnScreen();
 			    	popup.getContent().addAll(popupContentCntr);
 			    	popup.show(primaryStage);
+			} else {
+				this.renderAppointmentView(selectedAppt);
 			}
 		    }
 		});
@@ -197,7 +203,7 @@ public class UserHomePage {
 		this.grid.add(this.appointmentTable, 1, 1);
 
 	}
-
+	
 	private void configureReportDisplay() {
 		TextArea reportOutput = new TextArea();	
 		this.reportDisplay = reportOutput;
@@ -206,7 +212,10 @@ public class UserHomePage {
 		reportOutput.setEditable(false);
 		this.grid.add(reportOutput, 2, 1);
 	}
-
+	
+	/*
+	* This helper function takes an ArrayList of appointments and divvies them up by their creator.
+	*/
 	private HashMap<String, ArrayList<Appointment>> getAppointmentsByUsername(ArrayList<Appointment> appointments) {
 		HashMap<String, ArrayList<Appointment>> scheduleMap = new HashMap<>();
 		appointments.forEach(appointment -> {
@@ -221,19 +230,29 @@ public class UserHomePage {
 		});
 		return scheduleMap;
 	}
-
+	
+	/*
+	* This helper function is for extracting a specific key from a hash table that correspondes to the
+	* following format: MM_YY
+	*/
 	private String getMonthYearKey(Date appointmentStart) {
 		int month = appointmentStart.getMonth();
 		int year  = appointmentStart.getYear();
 		return Integer.toString(month) + "_" + Integer.toString(year);
 	}
-
+	
+	/*
+	* This function takes in a key of format: MM_YY and stringifies it.
+	*/
 	private String getMonthYearDesignation(String key) {
 		String[] tokens = key.split("\\_");
 		String month = new DateFormatSymbols().getMonths()[Integer.parseInt(tokens[0])];
 		return month + " - " + tokens[1].substring(1);
 	}
-
+	
+	/*	
+	* This helper function takes an ArrayList of appointments and divvies them up by their month.
+	*/
 	private HashMap<String, ArrayList<Appointment>> getAppointmentsByMonth(ArrayList<Appointment> appointments) {
 		HashMap<String, ArrayList<Appointment>> appointmentsByMonth = new HashMap<>();
 		appointments.forEach(appointment -> {
@@ -250,7 +269,11 @@ public class UserHomePage {
 		return appointmentsByMonth;
 			
 	}
-
+	
+	/*
+	* This function generates a report that shows a consultant's schedule.
+	* This is basically just appointments that are divvied up according to their corresponding user.
+	*/
 	private String generateConsultantReport () {
 		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
 		HashMap<String, ArrayList<Appointment>> scheduleMap = this.getAppointmentsByUsername(appointments);
@@ -273,6 +296,9 @@ public class UserHomePage {
 		return report.toString();
 	}
 
+	/*
+	* This function generates a report that shows a appointment types by month.
+	*/
 	private String generateAppointmentTypesReport() {
 		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
 		HashMap<String, ArrayList<Appointment>> appointmentsByMonth = this.getAppointmentsByMonth(appointments);
@@ -298,9 +324,11 @@ public class UserHomePage {
 			report.append("\n");
 		}
 		return report.toString();
-
 	}
 
+	/*
+	* This function generates a report that shows the total appointments, consultants and customers in the database.
+	*/
 	private String generateCompanyTotalsReport() {
 		ArrayList<Appointment> appointments = (ArrayList<Appointment>) this.queryBank.getAllAppointments();
 		ArrayList<User> consultants = (ArrayList<User>) this.queryBank.getAllUsers(null);
@@ -313,7 +341,7 @@ public class UserHomePage {
 		report.append("\n Total Appointments: " + Integer.toString(appointments.size()) + "\n");
 		return report.toString();
 	}
-
+	
 	private void configureReportGenerationBtns() {
 		VBox reportGenerationBtnContainer = new VBox();
 		Button consultantScheduleBtn = new Button("Generate Consultant Schedule Report");
@@ -340,7 +368,10 @@ public class UserHomePage {
 		this.sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
 		this.grid.add(this.sceneTitle, 0, 0, 2, 1);
 	}
-
+	
+	/*
+	* This function configures the filter buttons for the calendar - bootstrapping their event listeners.
+	*/
 	private void configureCalendarFilterBtns() {
 		Button filterByMonthBtn = new Button("By Month");
 		filterByMonthBtn.setOnAction((ActionEvent e) -> {
@@ -386,9 +417,11 @@ public class UserHomePage {
 		filterBtnContainer.getChildren().add(filterByMonthBtn);
 		this.grid.add(filterBtnContainer, 1, 0);
 		
-
-		//create btn that filters appointments only with appointments occuring this week
 	}
+
+	/*
+	* This function configures the button for adding appointments and bootstraps it's event listener.
+	*/
 	private void configureAddAppointmentBtn() {
 		Button addApptBtn = new Button("Add Appointment");
 		addApptBtn.setOnAction((ActionEvent e) -> {
@@ -401,6 +434,9 @@ public class UserHomePage {
 		this.grid.add(addApptContainer, 1, 2);
 	}
 
+	/*
+	* This function configures the button for adding customers and bootstraps it's event listener.
+	*/
 	private void configureAddCustomerBtn() {
 		addCustomerBtn = new Button("Add Customer");
 		addCustomerBtn.setOnAction((ActionEvent e) -> {
@@ -428,22 +464,23 @@ public class UserHomePage {
 		long currentTimestamp = Calendar.getInstance().getTime().getTime();
 
 		//iterate over appointments -> if appointment start is 15 minutes or less past current time show alert for that appointment
-		for(Appointment appt : this.appointments) {
+		this.appointments.forEach((appt) -> {
 			long apptTimestamp = appt.getStart().getTime();
 			if (Math.abs(apptTimestamp - currentTimestamp) <= TimeUnit.MINUTES.toMillis(15)) {
-    				this.showAppointmentReminderAlert(appt);
+				this.showAppointmentReminderAlert(appt);
 			}
-		}
+		});
 
 	}
 
 	private void showAppointmentReminderAlert(Appointment appointment)  {
 		StringBuilder reminder = new StringBuilder();
-		reminder.append("Upcoming Appointment: \n\n");
-		reminder.append("Title/Type: " + appointment.getTitle() + "\n");
-		reminder.append("Description: " + appointment.getDescription() + "\n");
-		reminder.append("Start: " + appointment.getStart().toString() + "\n");
-		reminder.append("End: " + appointment.getEnd().toString() + "\n");
+		reminder.append("Upcoming Appointment: \n\n")
+			.append("Title/Type: " + appointment.getTitle() + "\n")
+			.append("Description: " + appointment.getDescription() + "\n")
+			.append("Start: " + appointment.getStart().toString() + "\n")
+			.append("End: " + appointment.getEnd().toString() + "\n");
+
 		Alert alert = new Alert(AlertType.INFORMATION, reminder.toString());
 		alert.show();
 	}
